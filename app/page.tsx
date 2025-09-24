@@ -5,7 +5,7 @@ import { MovingBorder } from "@/components/ui/moving-border";
 
 export default function HomePage() {
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "👋 Right then, let's sort out this parking ticket mess! Tell me what happened and I'll help you craft a proper appeal that'll make the council think twice." }
+    { role: "assistant", content: "👋 Hi! Tell me your PCN details or upload your ticket - I'll create your appeal letter!" }
   ]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -192,10 +192,10 @@ export default function HomePage() {
         {/* Hero / Landing Headline */}
         <div className="text-center max-w-4xl mb-8 sm:mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
-            Fight Your PCN, Not the System.
+            Meet Glo!
           </h1>
           <p className="text-lg sm:text-xl text-gray-300 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
-            AI-powered parking ticket appeals that actually work.
+            Your revolutionary AI-powered PCN appeal buddy
           </p>
         </div>
 
@@ -230,7 +230,7 @@ export default function HomePage() {
                 className="flex-1 bg-zinc-800/80 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Describe your parking ticket situation..."
+                placeholder="Tell me your PCN details or upload your ticket..."
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               />
               <button
