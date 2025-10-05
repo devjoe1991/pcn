@@ -1,6 +1,6 @@
 export default function Containers() {
   return (
-    <section className="bg-black py-16 sm:py-20">
+    <section className="bg-black py-16 sm:py-20 -mt-1">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
