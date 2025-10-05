@@ -77,7 +77,7 @@ export default function ComingSoon() {
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
             Get Early Access
           </h2>
-          <p className="text-lg text-gray-300 max-w-2xl mx-auto">
+          <p className="text-xl sm:text-2xl font-bold text-white max-w-3xl mx-auto leading-tight">
             Join for exclusive access to our full AI-powered PCN appeal system
           </p>
         </div>

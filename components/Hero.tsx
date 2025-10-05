@@ -274,7 +274,7 @@ export default function Hero() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
             Meet Kerbi!
           </h1>
-          <p className="text-lg sm:text-xl text-gray-300 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl sm:text-2xl font-bold text-white mb-8 sm:mb-12 max-w-3xl mx-auto leading-tight">
             Your revolutionary AI-powered PCN appeal buddy
           </p>
         </div>
