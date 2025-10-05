@@ -8,10 +8,22 @@ export default function Hero() {
     { role: "assistant", content: "👋 Hi! Tell me your PCN details or upload your ticket - I'll create your appeal letter!" }
   ]);
   const [input, setInput] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const handleChatClick = () => {
+    if (!isLocked) {
+      setIsLocked(true);
+      // Scroll to waitlist section
+      const waitlistSection = document.querySelector('[data-section="waitlist"]');
+      if (waitlistSection) {
+        waitlistSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLocked) return;
 
     const newMessage = { role: "user", content: input };
     setMessages(prev => [...prev, newMessage]);
@@ -259,7 +271,12 @@ export default function Hero() {
           borderRadius="1rem"
           className="w-full max-w-4xl h-auto"
         >
-          <div className="flex flex-col bg-zinc-900/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
+          <div 
+            className={`flex flex-col bg-zinc-900/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${
+              isLocked ? 'opacity-60 cursor-pointer' : ''
+            }`}
+            onClick={handleChatClick}
+          >
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto" style={{ height: '400px' }}>
               {messages.map((m, i) => (
                 <div
@@ -282,19 +299,52 @@ export default function Hero() {
 
             <div className="p-4 sm:p-6 border-t border-zinc-700/50 flex bg-zinc-950/90 backdrop-blur-sm">
               <input
-                className="flex-1 bg-zinc-800/80 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                className={`flex-1 bg-zinc-800/80 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base ${
+                  isLocked ? 'cursor-not-allowed opacity-50' : ''
+                }`}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Tell me your PCN details or upload your ticket..."
+                placeholder={isLocked ? "Chat locked - Join waitlist below!" : "Tell me your PCN details or upload your ticket..."}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                disabled={isLocked}
               />
               <button
                 onClick={sendMessage}
-                className="ml-3 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-medium text-sm sm:text-base transition-colors"
+                disabled={isLocked}
+                className={`ml-3 px-6 py-3 rounded-xl text-white font-medium text-sm sm:text-base transition-colors ${
+                  isLocked 
+                    ? 'bg-zinc-600 cursor-not-allowed opacity-50' 
+                    : 'bg-blue-600 hover:bg-blue-500'
+                }`}
               >
-                Send
+                {isLocked ? 'Locked' : 'Send'}
               </button>
             </div>
+            
+            {/* Lock overlay when locked */}
+            {isLocked && (
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center border-2 border-zinc-600 mx-auto mb-4">
+                    <svg 
+                      className="w-8 h-8 text-zinc-400" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" 
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-white text-lg font-semibold mb-2">Chat Locked</p>
+                  <p className="text-gray-300 text-sm">Join the waitlist to unlock full access!</p>
+                </div>
+              </div>
+            )}
           </div>
         </MovingBorder>
       </div>

@@ -4,29 +4,46 @@ export default function Containers() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
-            Containers Section
+            How It Works
           </h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-            This is the containers section with a plain black background
+            Get out of paying that ticket in 3 simple steps
           </p>
         </div>
         
-        {/* Container content will go here */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Placeholder containers */}
-          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
-            <h3 className="text-xl font-semibold text-white mb-3">Container 1</h3>
-            <p className="text-gray-400">This is a placeholder container for future content.</p>
+        {/* 3 Steps Process */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Step 1: Upload Ticket */}
+          <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl p-8 border border-zinc-700 hover:border-blue-500 transition-all duration-300">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-600 rounded-full mb-6 mx-auto">
+              <span className="text-white font-bold text-lg">1</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4 text-center">Upload Ticket</h3>
+            <p className="text-gray-300 text-center leading-relaxed">
+              Simply upload a photo of your parking ticket or traffic violation. We'll analyze the details and get started on your case.
+            </p>
           </div>
           
-          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
-            <h3 className="text-xl font-semibold text-white mb-3">Container 2</h3>
-            <p className="text-gray-400">This is a placeholder container for future content.</p>
+          {/* Step 2: Tell Us The Situation */}
+          <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl p-8 border border-zinc-700 hover:border-green-500 transition-all duration-300">
+            <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-full mb-6 mx-auto">
+              <span className="text-white font-bold text-lg">2</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4 text-center">Tell Us The Situation</h3>
+            <p className="text-gray-300 text-center leading-relaxed">
+              Share the circumstances around your ticket. Every detail matters - we'll use this information to build your strongest defense.
+            </p>
           </div>
           
-          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
-            <h3 className="text-xl font-semibold text-white mb-3">Container 3</h3>
-            <p className="text-gray-400">This is a placeholder container for future content.</p>
+          {/* Step 3: Find Loopholes & Track Progress */}
+          <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl p-8 border border-zinc-700 hover:border-purple-500 transition-all duration-300">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-600 rounded-full mb-6 mx-auto">
+              <span className="text-white font-bold text-lg">3</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4 text-center">We Find The Best Loopholes</h3>
+            <p className="text-gray-300 text-center leading-relaxed">
+              Our AI analyzes your case and identifies the best legal loopholes and practices to get you out of paying. Track your progress every step of the way.
+            </p>
           </div>
         </div>
       </div>
