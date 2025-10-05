@@ -75,10 +75,10 @@ export default function ComingSoon() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
-            Get Early Access
+            Get Full Kerbi Access
           </h2>
           <p className="text-xl sm:text-2xl font-bold text-white max-w-3xl mx-auto leading-tight">
-            Join for exclusive access to our full AI-powered PCN appeal system
+            Join for instant access to the complete Kerbi AI system
           </p>
         </div>
         
@@ -105,14 +105,14 @@ export default function ComingSoon() {
 
           {/* Coming Soon Text */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Coming Soon</h1>
-            <p className="text-gray-400">Get early access to our full AI-powered PCN appeal system</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Ready to Launch!</h1>
+          <p className="text-gray-400">Get instant access to the full Kerbi AI system</p>
           </div>
 
           {/* Countdown Timer */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-white text-center mb-4">
-              Launching in:
+              Early access offer expires in:
             </h3>
             <div className="flex justify-center space-x-4">
               <div className="bg-zinc-800 rounded-lg p-4 min-w-[60px] text-center border border-zinc-700">
@@ -135,14 +135,14 @@ export default function ComingSoon() {
             <form onSubmit={handleSubmit} className="space-y-4" data-waitlist-form>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Get early access to the full app
+                  Get full access to Kerbi AI system
                 </label>
                 <input
                   type="email"
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
+                  placeholder="Enter your email for full Kerbi access"
                   className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                   disabled={isLoading}
@@ -160,7 +160,7 @@ export default function ComingSoon() {
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
-                {isLoading ? 'Joining...' : 'Get Early Access'}
+                {isLoading ? 'Getting Access...' : 'Get Full Kerbi Access'}
               </button>
             </form>
           ) : (
@@ -170,8 +170,8 @@ export default function ComingSoon() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">You&apos;re on the list!</h3>
-              <p className="text-gray-400">We&apos;ll notify you with access to the full app.</p>
+              <h3 className="text-xl font-semibold text-white mb-2">Welcome to Kerbi!</h3>
+              <p className="text-gray-400">You&apos;ll receive full access to the Kerbi AI system.</p>
             </div>
           )}
           </div>
