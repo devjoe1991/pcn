@@ -16,20 +16,23 @@ export default function Hero() {
       setIsLocked(true);
       // Scroll to waitlist section with a small delay to ensure DOM is updated
       setTimeout(() => {
-        const waitlistSection = document.querySelector('[data-section="waitlist"]');
-        if (waitlistSection) {
-          waitlistSection.scrollIntoView({ 
+        const waitlistForm = document.querySelector('[data-waitlist-form]');
+        if (waitlistForm) {
+          waitlistForm.scrollIntoView({ 
             behavior: 'smooth',
-            block: 'start'
+            block: 'center'
           });
         } else {
-          // Fallback: try to find the section by class or scroll to bottom
-          const sections = document.querySelectorAll('section');
-          const lastSection = sections[sections.length - 1];
-          if (lastSection) {
-            lastSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Fallback: try to find the waitlist section
+          const waitlistSection = document.querySelector('[data-section="waitlist"]');
+          if (waitlistSection) {
+            waitlistSection.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'start'
+            });
+          } else {
+            console.warn('Waitlist form not found');
           }
-          console.warn('Waitlist section not found, scrolling to last section');
         }
       }, 100);
     }
@@ -268,7 +271,7 @@ export default function Hero() {
       />
       
       {/* Content */}
-      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 py-8 pb-0">
+      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 py-8">
         {/* Hero / Landing Headline */}
         <div className="text-center max-w-4xl mb-8 sm:mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">

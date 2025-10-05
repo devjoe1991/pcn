@@ -132,7 +132,7 @@ export default function ComingSoon() {
 
           {/* Waitlist Form */}
           {!isSubmitted ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" data-waitlist-form>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                   Get early access to the full app
