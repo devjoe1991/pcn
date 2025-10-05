@@ -42,7 +42,7 @@ export default function Containers() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4 text-center">We Find The Best Loopholes</h3>
             <p className="text-gray-300 text-center leading-relaxed">
-              Our AI analyzes your case and identifies the best legal loopholes and practices to get you out of paying. Track your progress every step of the way.
+              Our AI-powered system analyzes your case and identifies the best legal loopholes and practices to get you out of paying. Track your progress every step of the way.
             </p>
           </div>
         </div>

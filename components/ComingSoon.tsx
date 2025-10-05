@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface TimeLeft {
   hours: number;
@@ -12,6 +13,8 @@ export default function ComingSoon() {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ hours: 0, minutes: 0, seconds: 0 });
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     // Set countdown to 24 hours from now
@@ -36,12 +39,34 @@ export default function ComingSoon() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email) {
-      setIsSubmitted(true);
-      // Here you would typically send the email to your backend
-      console.log('Email added to waitlist:', email);
+      setIsLoading(true);
+      setError('');
+      
+      try {
+        const { error } = await supabase
+          .from('waitlist')
+          .insert([{ email }]);
+        
+        if (error) {
+          console.error('Error adding to waitlist:', error);
+          if (error.code === '23505') {
+            setError('This email is already on the waitlist!');
+          } else {
+            setError('Failed to join waitlist. Please try again.');
+          }
+        } else {
+          setIsSubmitted(true);
+          console.log('Email added to waitlist:', email);
+        }
+      } catch (error) {
+        console.error('Error adding to waitlist:', error);
+        setError('Network error. Please check your connection and try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -120,13 +145,22 @@ export default function ComingSoon() {
                   placeholder="Enter your email address"
                   className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  disabled={isLoading}
                 />
+                {error && (
+                  <p className="text-red-400 text-sm mt-2">{error}</p>
+                )}
               </div>
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+                disabled={isLoading}
+                className={`w-full font-semibold py-3 px-4 rounded-lg transition-colors duration-200 ${
+                  isLoading 
+                    ? 'bg-zinc-600 cursor-not-allowed text-gray-400' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
-                Get Early Access
+                {isLoading ? 'Joining...' : 'Get Early Access'}
               </button>
             </form>
           ) : (
