@@ -106,7 +106,7 @@ export default function ComingSoon() {
           {/* Coming Soon Text */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Coming Soon</h1>
-            <p className="text-gray-400">We're putting the finishing touches on something amazing</p>
+            <p className="text-gray-400">We&apos;re putting the finishing touches on something amazing</p>
           </div>
 
           {/* Countdown Timer */}
@@ -170,7 +170,7 @@ export default function ComingSoon() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">You're on the list!</h3>
+              <h3 className="text-xl font-semibold text-white mb-2">You&apos;re on the list!</h3>
               <p className="text-gray-400">We&apos;ll notify you as soon as we launch.</p>
             </div>
           )}
