@@ -268,7 +268,7 @@ export default function Hero() {
       />
       
       {/* Content */}
-      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 py-8">
+      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 py-8 pb-0">
         {/* Hero / Landing Headline */}
         <div className="text-center max-w-4xl mb-8 sm:mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
