@@ -75,10 +75,10 @@ export default function ComingSoon() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
-            Waitlist
+            Get Early Access
           </h2>
           <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-            Be the first to know when we launch
+            Join for exclusive access to our full AI-powered PCN appeal system
           </p>
         </div>
         
@@ -106,7 +106,7 @@ export default function ComingSoon() {
           {/* Coming Soon Text */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Coming Soon</h1>
-            <p className="text-gray-400">We&apos;re putting the finishing touches on something amazing</p>
+            <p className="text-gray-400">Get early access to our full AI-powered PCN appeal system</p>
           </div>
 
           {/* Countdown Timer */}
@@ -135,7 +135,7 @@ export default function ComingSoon() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Join the waitlist
+                  Get early access to the full app
                 </label>
                 <input
                   type="email"
@@ -171,7 +171,7 @@ export default function ComingSoon() {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">You&apos;re on the list!</h3>
-              <p className="text-gray-400">We&apos;ll notify you as soon as we launch.</p>
+              <p className="text-gray-400">We&apos;ll notify you with access to the full app.</p>
             </div>
           )}
           </div>
