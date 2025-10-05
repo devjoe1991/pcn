@@ -62,7 +62,7 @@ export default function TrustIndicators() {
                 </div>
               </div>
               <p className="text-gray-300 italic">
-                "Saved me £180 on a parking fine I thought I had to pay. The AI-powered system found a technicality I never would have spotted. Absolutely brilliant!"
+                &ldquo;Saved me £180 on a parking fine I thought I had to pay. The AI-powered system found a technicality I never would have spotted. Absolutely brilliant!&rdquo;
               </p>
             </div>
             
@@ -78,7 +78,7 @@ export default function TrustIndicators() {
                 </div>
               </div>
               <p className="text-gray-300 italic">
-                "As a delivery driver, I get tickets all the time. This AI-powered system has saved me over £500 in the last 3 months alone. Game changer!"
+                &ldquo;As a delivery driver, I get tickets all the time. This AI-powered system has saved me over £500 in the last 3 months alone. Game changer!&rdquo;
               </p>
             </div>
           </div>

@@ -20,7 +20,7 @@ export default function Containers() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4 text-center">Upload Ticket</h3>
             <p className="text-gray-300 text-center leading-relaxed">
-              Simply upload a photo of your parking ticket or traffic violation. We'll analyze the details and get started on your case.
+              Simply upload a photo of your parking ticket or traffic violation. We&apos;ll analyze the details and get started on your case.
             </p>
           </div>
           
@@ -31,7 +31,7 @@ export default function Containers() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4 text-center">Tell Us The Situation</h3>
             <p className="text-gray-300 text-center leading-relaxed">
-              Share the circumstances around your ticket. Every detail matters - we'll use this information to build your strongest defense.
+              Share the circumstances around your ticket. Every detail matters - we&apos;ll use this information to build your strongest defense.
             </p>
           </div>
           

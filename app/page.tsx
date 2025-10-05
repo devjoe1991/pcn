@@ -1,15 +1,15 @@
 import Hero from "../components/Hero";
 import Containers from "../components/Containers";
-import TrustIndicators from "../components/TrustIndicators";
 import ComingSoon from "../components/ComingSoon";
+import TrustIndicators from "../components/TrustIndicators";
 
 export default function HomePage() {
   return (
     <div>
       <Hero />
       <Containers />
-      <TrustIndicators />
       <ComingSoon />
+      <TrustIndicators />
     </div>
   );
 }

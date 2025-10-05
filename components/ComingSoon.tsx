@@ -171,7 +171,7 @@ export default function ComingSoon() {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">You're on the list!</h3>
-              <p className="text-gray-400">We'll notify you as soon as we launch.</p>
+              <p className="text-gray-400">We&apos;ll notify you as soon as we launch.</p>
             </div>
           )}
           </div>
