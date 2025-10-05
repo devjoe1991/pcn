@@ -14,11 +14,24 @@ export default function Hero() {
   const handleChatClick = () => {
     if (!isLocked) {
       setIsLocked(true);
-      // Scroll to waitlist section
-      const waitlistSection = document.querySelector('[data-section="waitlist"]');
-      if (waitlistSection) {
-        waitlistSection.scrollIntoView({ behavior: 'smooth' });
-      }
+      // Scroll to waitlist section with a small delay to ensure DOM is updated
+      setTimeout(() => {
+        const waitlistSection = document.querySelector('[data-section="waitlist"]');
+        if (waitlistSection) {
+          waitlistSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else {
+          // Fallback: try to find the section by class or scroll to bottom
+          const sections = document.querySelectorAll('section');
+          const lastSection = sections[sections.length - 1];
+          if (lastSection) {
+            lastSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          console.warn('Waitlist section not found, scrolling to last section');
+        }
+      }, 100);
     }
   };
 
