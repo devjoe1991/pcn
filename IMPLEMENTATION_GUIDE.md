@@ -1,31 +1,39 @@
 # PCN Appeals System Implementation Guide
 
 ## Overview
-This guide provides step-by-step tasks to implement a PCN (Penalty Charge Notice) appeals system with:
-- **Free appeal per month** for each user
-- **Pay per additional appeal** after free monthly allowance
-- **Pay to add more vehicles** to user accounts
+This guide provides step-by-step tasks to implement a streamlined PCN (Penalty Charge Notice) appeals system with:
+- **Seamless authentication flow** - Users click chat → redirected to Supabase Auth UI
+- **One free appeal per month** for each user
+- **Automatic vehicle detection** - OCR extracts number plate, prompts to add if new
+- **Pay to add additional vehicles** (£3 per vehicle after first)
 - **Photo upload with OCR** to automatically scan PCN tickets
-- OpenAI ChatGPT integration for appeal generation
-- User authentication and dashboard system
+- **Single chat interface** for appeal generation and management
+- **Dashboard integration** - Appeals saved by vehicle number
 
 ## Prerequisites
 - OpenAI API key (for both ChatGPT and Vision)
 - Stripe account and API keys
-- Supabase project (already configured)
+- Supabase project (already configured with CLI)
 - Node.js and pnpm installed
+- Supabase CLI installed and linked to your project
 
 ---
 
 ## Phase 1: Database Setup
 
 ### Task 1.1: Create Simplified Database Schema
-**Prompt:** "Create a single efficient users table with all necessary columns for tracking appeals, vehicles, and savings"
+**Prompt:** "Create a single efficient users table with all necessary columns for tracking appeals, vehicles, and savings using Supabase CLI"
 
-**Files to create/modify:**
-- `supabase/migrations/20240101000001_create_users_table.sql`
+**Commands to run:**
+```bash
+# Create a new migration file
+supabase migration new create_users_table
 
-**SQL Content:**
+# This will create a file like: supabase/migrations/20240101000001_create_users_table.sql
+# Then add the SQL content below to that file
+```
+
+**Add the following SQL to the generated migration file:**
 ```sql
 -- Single comprehensive users table
 CREATE TABLE IF NOT EXISTS public.users (
@@ -87,6 +95,67 @@ CREATE TRIGGER update_users_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 ```
 
+**After adding the SQL, apply the migration:**
+```bash
+# Apply the migration to your local development database
+supabase db reset
+
+# Or apply just this migration
+supabase migration up
+```
+
+### Task 1.2: Create Appeals Table
+**Prompt:** "Create appeals table to store individual appeal records"
+
+**Commands to run:**
+```bash
+# Create a new migration for appeals table
+supabase migration new create_appeals_table
+```
+
+**Add the following SQL to the generated migration file:**
+```sql
+-- Appeals table to store individual appeal records
+CREATE TABLE IF NOT EXISTS public.appeals (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    number_plate TEXT NOT NULL,
+    appeal_content TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'successful', 'unsuccessful')),
+    ticket_value INTEGER DEFAULT 0, -- Value of the PCN ticket in pence
+    is_free_appeal BOOLEAN DEFAULT false,
+    image_url TEXT, -- URL of uploaded PCN image
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.appeals ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can view own appeals" ON public.appeals FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own appeals" ON public.appeals FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own appeals" ON public.appeals FOR UPDATE USING (auth.uid() = user_id);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_appeals_user_id ON public.appeals(user_id);
+CREATE INDEX IF NOT EXISTS idx_appeals_number_plate ON public.appeals(number_plate);
+CREATE INDEX IF NOT EXISTS idx_appeals_status ON public.appeals(status);
+CREATE INDEX IF NOT EXISTS idx_appeals_created_at ON public.appeals(created_at);
+
+-- Create trigger to automatically update updated_at
+CREATE TRIGGER update_appeals_updated_at 
+    BEFORE UPDATE ON public.appeals 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+**Apply the appeals migration:**
+```bash
+# Apply the new migration
+supabase migration up
+```
+
 ---
 
 ## Phase 2: Dependencies and Environment
@@ -96,7 +165,7 @@ CREATE TRIGGER update_users_updated_at
 
 **Command:**
 ```bash
-pnpm add openai stripe @stripe/stripe-js
+pnpm add openai stripe @stripe/stripe-js @supabase/ssr
 pnpm add -D @types/stripe
 ```
 
@@ -193,19 +262,133 @@ export const getStripeCustomerId = async (userId: string) => {
 };
 ```
 
-### Task 3.2: Create Authentication Pages
-**Prompt:** "Create login and signup pages with forms and error handling"
+### Task 3.2: Create Streamlined Authentication Flow
+**Prompt:** "Create seamless authentication using Supabase Auth UI with automatic redirects"
 
-**Files to create:**
-- `app/login/page.tsx`
-- `app/signup/page.tsx`
-- `components/AuthForm.tsx`
+**File:** `app/auth/page.tsx`
+```typescript
+'use client';
+import { useEffect } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+import { useRouter } from 'next/navigation';
+
+export default function AuthPage() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const router = useRouter();
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.push('/');
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [supabase, router]);
+
+  const handleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <div className="bg-zinc-900 rounded-lg p-8 border border-zinc-700 text-center">
+          <h1 className="text-2xl font-bold mb-6">Sign in to continue</h1>
+          <p className="text-gray-400 mb-8">Create your appeal with AI assistance</p>
+          <button
+            onClick={handleSignIn}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium"
+          >
+            Continue with Google
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+**File:** `components/AuthRedirect.tsx`
+```typescript
+'use client';
+import { useEffect, useState } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+import { useRouter } from 'next/navigation';
+
+export default function AuthRedirect() {
+  const [loading, setLoading] = useState(true);
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push('/');
+      } else {
+        router.push('/auth');
+      }
+      setLoading(false);
+    };
+    checkAuth();
+  }, [supabase, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+```
 
 ---
 
 ## Phase 4: OCR and Image Upload System
 
-### Task 4.1: Create Image Upload API with OpenAI Vision
+### Task 4.1: Create Supabase Storage Bucket
+**Prompt:** "Create storage bucket for PCN images using Supabase CLI"
+
+**Commands to run:**
+```bash
+# Create storage bucket for PCN images
+supabase storage create pcn-images --public
+
+# Set up storage policies
+supabase storage policy create pcn-images-policy --bucket pcn-images --policy-file storage-policy.json
+```
+
+**Create file:** `storage-policy.json`
+```json
+{
+  "policies": [
+    {
+      "name": "Users can upload their own images",
+      "definition": "auth.uid() = (storage.foldername(name))[1]::uuid"
+    },
+    {
+      "name": "Users can view their own images",
+      "definition": "auth.uid() = (storage.foldername(name))[1]::uuid"
+    }
+  ]
+}
+```
+
+### Task 4.2: Create Image Upload API with OpenAI Vision
 **Prompt:** "Create API endpoint for uploading PCN images with OpenAI Vision OCR processing"
 
 **File:** `app/api/upload-pcn/route.ts`
@@ -532,8 +715,8 @@ Current user context: ${userContext || 'No specific context provided'}`;
 ```typescript
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { getCurrentUser } from '../lib/auth';
+import UsageStats from './UsageStats';
 
 interface Appeal {
   id: string;
@@ -541,6 +724,8 @@ interface Appeal {
   appeal_content: string;
   status: 'pending' | 'submitted' | 'successful' | 'unsuccessful';
   created_at: string;
+  ticket_value: number;
+  image_url?: string;
 }
 
 export default function Dashboard() {
@@ -554,13 +739,14 @@ export default function Dashboard() {
       setUser(currentUser);
 
       if (currentUser) {
-        const { data: appealsData } = await supabase
-          .from('appeals')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false });
-
-        setAppeals(appealsData || []);
+        // Fetch appeals from API
+        try {
+          const response = await fetch(`/api/appeals?userId=${currentUser.id}`);
+          const data = await response.json();
+          setAppeals(data.appeals || []);
+        } catch (error) {
+          console.error('Failed to fetch appeals:', error);
+        }
       }
       setLoading(false);
     };
@@ -569,65 +755,102 @@ export default function Dashboard() {
   }, []);
 
   const updateAppealStatus = async (appealId: string, status: 'successful' | 'unsuccessful') => {
-    const { error } = await supabase
-      .from('appeals')
-      .update({ status })
-      .eq('id', appealId);
+    try {
+      const response = await fetch('/api/update-appeal-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user.id, 
+          appealId, 
+          status,
+          ticketValue: appeals.find(a => a.id === appealId)?.ticket_value || 0
+        }),
+      });
 
-    if (!error) {
-      setAppeals(prev => prev.map(appeal => 
-        appeal.id === appealId ? { ...appeal, status } : appeal
-      ));
+      if (response.ok) {
+        setAppeals(prev => prev.map(appeal => 
+          appeal.id === appealId ? { ...appeal, status } : appeal
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to update appeal status:', error);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Your Appeals Dashboard</h1>
         
-        <div className="grid gap-6">
-          {appeals.map((appeal) => (
-            <div key={appeal.id} className="bg-zinc-900 rounded-lg p-6 border border-zinc-700">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold">Number Plate: {appeal.number_plate}</h3>
-                  <p className="text-gray-400">Created: {new Date(appeal.created_at).toLocaleDateString()}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  appeal.status === 'successful' ? 'bg-green-600' :
-                  appeal.status === 'unsuccessful' ? 'bg-red-600' :
-                  'bg-yellow-600'
-                }`}>
-                  {appeal.status}
-                </span>
-              </div>
-              
-              <div className="mb-4">
-                <h4 className="font-semibold mb-2">Appeal Content:</h4>
-                <p className="text-gray-300 whitespace-pre-wrap">{appeal.appeal_content}</p>
-              </div>
-
-              {appeal.status === 'submitted' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => updateAppealStatus(appeal.id, 'successful')}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
-                  >
-                    Mark as Successful
-                  </button>
-                  <button
-                    onClick={() => updateAppealStatus(appeal.id, 'unsuccessful')}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg"
-                  >
-                    Mark as Unsuccessful
-                  </button>
-                </div>
-              )}
+        {/* Usage Stats */}
+        {user && <UsageStats userId={user.id} />}
+        
+        <div className="mt-8">
+          <h2 className="text-2xl font-semibold mb-6">Your Appeals</h2>
+          
+          {appeals.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400 text-lg">No appeals yet. Create your first appeal to get started!</p>
             </div>
-          ))}
+          ) : (
+            <div className="grid gap-6">
+              {appeals.map((appeal) => (
+                <div key={appeal.id} className="bg-zinc-900 rounded-lg p-6 border border-zinc-700">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">Number Plate: {appeal.number_plate}</h3>
+                      <p className="text-gray-400">Created: {new Date(appeal.created_at).toLocaleDateString()}</p>
+                      {appeal.ticket_value > 0 && (
+                        <p className="text-gray-400">Ticket Value: £{(appeal.ticket_value / 100).toFixed(2)}</p>
+                      )}
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm ${
+                      appeal.status === 'successful' ? 'bg-green-600' :
+                      appeal.status === 'unsuccessful' ? 'bg-red-600' :
+                      appeal.status === 'submitted' ? 'bg-blue-600' :
+                      'bg-yellow-600'
+                    }`}>
+                      {appeal.status}
+                    </span>
+                  </div>
+                  
+                  {appeal.image_url && (
+                    <div className="mb-4">
+                      <img 
+                        src={appeal.image_url} 
+                        alt="PCN Ticket" 
+                        className="max-w-xs rounded-lg border border-zinc-600"
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="mb-4">
+                    <h4 className="font-semibold mb-2">Appeal Content:</h4>
+                    <p className="text-gray-300 whitespace-pre-wrap">{appeal.appeal_content}</p>
+                  </div>
+
+                  {appeal.status === 'submitted' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateAppealStatus(appeal.id, 'successful')}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
+                      >
+                        Mark as Successful
+                      </button>
+                      <button
+                        onClick={() => updateAppealStatus(appeal.id, 'unsuccessful')}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg"
+                      >
+                        Mark as Unsuccessful
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -682,7 +905,7 @@ export async function POST(request: NextRequest) {
     // Determine amount based on payment type
     const amounts = {
       additional_appeal: 500, // £5 in pence
-      vehicle_addition: 1000, // £10 in pence
+      vehicle_addition: 300, // £3 in pence
     };
 
     const amount = amounts[paymentType as keyof typeof amounts] || 500;
@@ -700,7 +923,7 @@ export async function POST(request: NextRequest) {
       },
       description: paymentType === 'additional_appeal' 
         ? 'Additional PCN Appeal - £5' 
-        : 'Vehicle Registration Change - £10'
+        : 'Vehicle Registration Change - £3'
     });
 
     return NextResponse.json({ 
@@ -916,9 +1139,9 @@ export async function POST(request: NextRequest) {
     if (existingUser?.vehicle_reg) {
       return NextResponse.json({ 
         requiresPayment: true,
-        amount: 1000, // £10 in pence
+        amount: 300, // £3 in pence
         paymentType: 'vehicle_addition',
-        message: 'Changing vehicle registration costs £10'
+        message: 'Changing vehicle registration costs £3'
       });
     }
 
@@ -1186,7 +1409,8 @@ export async function POST(request: NextRequest) {
       appealContent, 
       numberPlate, 
       ticketValue, 
-      isFreeAppeal 
+      isFreeAppeal,
+      imageUrl 
     } = await request.json();
     
     if (!userId || !appealContent || !numberPlate) {
@@ -1204,7 +1428,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Calculate updates
+    // Create appeal record
+    const { data: appealData, error: appealError } = await supabase
+      .from('appeals')
+      .insert({
+        user_id: userId,
+        number_plate: numberPlate.toUpperCase(),
+        appeal_content: appealContent,
+        ticket_value: ticketValue || 0,
+        is_free_appeal: isFreeAppeal,
+        image_url: imageUrl,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (appealError) {
+      return NextResponse.json({ error: 'Failed to create appeal record' }, { status: 500 });
+    }
+
+    // Calculate updates for user statistics
     const updates: any = {
       total_appeals: userData.total_appeals + 1,
       pending_appeals: userData.pending_appeals + 1,
@@ -1224,12 +1467,13 @@ export async function POST(request: NextRequest) {
       .eq('id', userId);
 
     if (updateError) {
-      return NextResponse.json({ error: 'Failed to create appeal' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update user statistics' }, { status: 500 });
     }
 
     return NextResponse.json({ 
       success: true,
       message: 'Appeal created successfully',
+      appealId: appealData.id,
       appealData: {
         totalAppeals: updates.total_appeals,
         pendingAppeals: updates.pending_appeals,
@@ -1244,21 +1488,57 @@ export async function POST(request: NextRequest) {
 }
 ```
 
+### Task 7.6: Create Appeal Retrieval API
+**Prompt:** "Create API for retrieving user's appeals for dashboard"
+
+**File:** `app/api/appeals/route.ts`
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '../../../lib/supabase';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    }
+
+    const { data: appeals, error } = await supabase
+      .from('appeals')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to fetch appeals' }, { status: 500 });
+    }
+
+    return NextResponse.json({ appeals: appeals || [] });
+
+  } catch (error) {
+    console.error('Appeals fetch error:', error);
+    return NextResponse.json({ error: 'Failed to fetch appeals' }, { status: 500 });
+  }
+}
+```
+
 ---
 
 ## Phase 8: Update Hero Component
 
-### Task 8.1: Update Hero with Photo Upload and OCR
-**Prompt:** "Update the Hero component to integrate photo upload, OCR processing, usage tracking, and payment functionality"
+### Task 8.1: Create Streamlined Chat Interface
+**Prompt:** "Create a single chat interface that handles authentication, OCR, vehicle detection, and appeal creation seamlessly"
 
-**File:** `components/Hero.tsx` (Updated version)
+**File:** `components/Hero.tsx` (Streamlined version)
 ```typescript
 'use client';
 import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { MovingBorder } from "./ui/moving-border";
-import { getCurrentUser } from "../lib/auth";
-import { supabase } from "../lib/supabase";
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
 import ImageUpload from "./ImageUpload";
 import PaymentForm from "./PaymentForm";
 import UsageStats from "./UsageStats";
@@ -1268,28 +1548,32 @@ export default function Hero() {
     { role: "assistant", content: "👋 Hi! Upload your PCN ticket photo or tell me your details - I'll create your appeal letter!" }
   ]);
   const [input, setInput] = useState("");
-  const [isLocked, setIsLocked] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [currentAppealId, setCurrentAppealId] = useState(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [usageData, setUsageData] = useState(null);
-  const [paymentType, setPaymentType] = useState('additional_appeal');
+  const [paymentType, setPaymentType] = useState('vehicle_addition');
+  const [detectedVehicle, setDetectedVehicle] = useState(null);
+  const [needsVehiclePayment, setNeedsVehiclePayment] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const supabase = createClientComponentClient();
+  const router = useRouter();
 
   useEffect(() => {
     const checkUser = async () => {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      setIsLocked(!currentUser);
-      
-      if (currentUser) {
-        await fetchUsageData(currentUser.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        await fetchUsageData(session.user.id);
+      } else {
+        // Redirect to auth if not logged in
+        router.push('/auth');
       }
     };
     checkUser();
-  }, []);
+  }, [supabase, router]);
 
   const fetchUsageData = async (userId: string) => {
     try {
@@ -1306,7 +1590,7 @@ export default function Hero() {
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || isLocked || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
     const newMessage = { role: "user", content: input };
     setMessages(prev => [...prev, newMessage]);
@@ -1335,9 +1619,22 @@ export default function Hero() {
 
   const handleImageProcessed = async (data: any) => {
     const { extractedData, imageUrl } = data;
+    setDetectedVehicle(extractedData.numberPlate);
     
-    // Create a message with the extracted data
-    const extractedMessage = `I've scanned your PCN ticket. Here's what I found:
+    // Check if this vehicle is already registered
+    const isCurrentVehicle = usageData?.vehicleReg === extractedData.numberPlate.toUpperCase();
+    
+    if (!isCurrentVehicle && usageData?.vehicleReg) {
+      // Different vehicle detected - need to add it
+      setNeedsVehiclePayment(true);
+      setPaymentType('vehicle_addition');
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: `I detected a different vehicle (${extractedData.numberPlate}) than your registered one (${usageData.vehicleReg}). To add this vehicle, there's a £3 fee. Would you like to proceed?` 
+      }]);
+    } else {
+      // Same vehicle or first vehicle - proceed with appeal
+      const extractedMessage = `I've scanned your PCN ticket. Here's what I found:
 
 **Number Plate:** ${extractedData.numberPlate}
 **PCN Number:** ${extractedData.pcnNumber}
@@ -1345,9 +1642,12 @@ export default function Hero() {
 **Issue Date:** ${extractedData.issueDate}
 **Location:** ${extractedData.location}
 
-Please review these details and let me know if you'd like me to create an appeal based on this information.`;
+I'll create your appeal letter now!`;
 
-    setMessages(prev => [...prev, { role: "assistant", content: extractedMessage }]);
+      setMessages(prev => [...prev, { role: "assistant", content: extractedMessage }]);
+      await createAppeal(extractedData, imageUrl);
+    }
+    
     setShowImageUpload(false);
   };
 
@@ -1356,10 +1656,9 @@ Please review these details and let me know if you'd like me to create an appeal
     setShowImageUpload(false);
   };
 
-  const saveAppeal = async () => {
-    if (!user || messages.length < 2) return;
+  const createAppeal = async (extractedData: any, imageUrl: string) => {
+    if (!user) return;
 
-    // Check if user has free appeal available
     const hasFreeAppeal = usageData?.hasFreeAppeal || false;
     
     if (!hasFreeAppeal) {
@@ -1368,91 +1667,109 @@ Please review these details and let me know if you'd like me to create an appeal
       return;
     }
 
-    // Use free appeal
-    await createAppeal(true);
-  };
-
-  const createAppeal = async (isFree: boolean) => {
+    // Create appeal with extracted data
     const appealContent = messages
       .filter(m => m.role === "assistant")
       .map(m => m.content)
       .join('\n\n');
 
-    const numberPlate = extractNumberPlate(input);
-
-    const { data, error } = await supabase
-      .from('appeals')
-      .insert({
-        user_id: user.id,
-        number_plate: numberPlate,
-        appeal_content: appealContent,
-        is_free_appeal: isFree,
-        status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      if (isFree) {
-        // Update usage tracking
-        await updateUsageTracking();
-        alert('Free appeal saved to your dashboard!');
-      } else {
-        setCurrentAppealId(data.id);
-        setShowPayment(true);
-      }
-    }
-  };
-
-  const updateUsageTracking = async () => {
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-    await supabase
-      .from('usage_tracking')
-      .upsert({
-        user_id: user.id,
-        month_year: currentMonth,
-        free_appeals_used: 1
+    try {
+      const response = await fetch('/api/create-appeal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          appealContent,
+          numberPlate: extractedData.numberPlate,
+          ticketValue: parseFloat(extractedData.penaltyAmount) * 100, // Convert to pence
+          isFreeAppeal: true,
+          imageUrl
+        }),
       });
 
-    // Refresh usage data
-    await fetchUsageData(user.id);
-  };
-
-  const extractNumberPlate = (text: string): string => {
-    const plateRegex = /[A-Z]{2}[0-9]{2}\s?[A-Z]{3}|[A-Z][0-9]{1,3}\s?[A-Z]{3}/i;
-    const match = text.match(plateRegex);
-    return match ? match[0].toUpperCase() : 'UNKNOWN';
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessages(prev => [...prev, { 
+          role: "assistant", 
+          content: "✅ Your free appeal has been saved to your dashboard! You can view it anytime." 
+        }]);
+        await fetchUsageData(user.id);
+      }
+    } catch (error) {
+      console.error('Failed to create appeal:', error);
+    }
   };
 
   const handlePaymentSuccess = () => {
     setShowPayment(false);
-    alert('Payment successful! Your appeal has been saved to your dashboard.');
+    setNeedsVehiclePayment(false);
+    
+    if (paymentType === 'vehicle_addition') {
+      // Update vehicle registration
+      fetch('/api/vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          vehicleReg: detectedVehicle
+        }),
+      }).then(() => {
+        setMessages(prev => [...prev, { 
+          role: "assistant", 
+          content: `✅ Vehicle ${detectedVehicle} added successfully! Now I can create your appeal.` 
+        }]);
+        fetchUsageData(user.id);
+      });
+    } else {
+      // Additional appeal payment
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: "✅ Payment successful! Your appeal has been saved to your dashboard." 
+      }]);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/auth');
   };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
-      {/* ... existing background code ... */}
-      
       <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 py-8">
-        {/* ... existing hero content ... */}
-
         <MovingBorder
           borderRadius="1rem"
           className="w-full max-w-4xl h-auto"
         >
           <div className="flex flex-col bg-zinc-900/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
-            {/* Usage Stats */}
-            {user && usageData && (
-              <div className="p-4 border-b border-zinc-700/50">
+            {/* Header with user info and sign out */}
+            <div className="p-4 border-b border-zinc-700/50 flex justify-between items-center">
+              <div className="flex items-center space-x-4">
                 <UsageStats userId={user.id} />
               </div>
-            )}
+              <button
+                onClick={handleSignOut}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+              >
+                Sign Out
+              </button>
+            </div>
 
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto" style={{ height: '400px' }}>
               {messages.map((m, i) => (
@@ -1498,11 +1815,11 @@ Please review these details and let me know if you'd like me to create an appeal
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Tell me your PCN details..."
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                disabled={isLocked || isLoading}
+                disabled={isLoading}
               />
               <button
                 onClick={() => setShowImageUpload(!showImageUpload)}
-                disabled={isLocked || isLoading}
+                disabled={isLoading}
                 className="mx-2 px-4 py-3 rounded-xl text-white font-medium text-sm sm:text-base transition-colors bg-green-600 hover:bg-green-500 disabled:opacity-50"
                 title="Upload PCN Photo"
               >
@@ -1510,30 +1827,23 @@ Please review these details and let me know if you'd like me to create an appeal
               </button>
               <button
                 onClick={sendMessage}
-                disabled={isLocked || isLoading}
+                disabled={isLoading}
                 className="ml-2 px-6 py-3 rounded-xl text-white font-medium text-sm sm:text-base transition-colors bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
               >
                 {isLoading ? 'Sending...' : 'Send'}
               </button>
             </div>
-            
-            {user && messages.length > 1 && !showPayment && (
-              <div className="p-4 border-t border-zinc-700/50">
-                <button
-                  onClick={saveAppeal}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium"
-                >
-                  {usageData?.hasFreeAppeal ? 'Save Free Appeal' : 'Save Appeal (£5)'}
-                </button>
-              </div>
-            )}
 
-            {showPayment && currentAppealId && (
+            {/* Payment Section */}
+            {showPayment && (
               <div className="p-4 border-t border-zinc-700/50">
                 <h3 className="text-lg font-semibold mb-4">
-                  Complete Payment - {paymentType === 'additional_appeal' ? '£5' : '£10'}
+                  Complete Payment - {paymentType === 'additional_appeal' ? '£5' : '£3'}
                 </h3>
-                <PaymentForm appealId={currentAppealId} onSuccess={handlePaymentSuccess} />
+                <PaymentForm 
+                  appealId={currentAppealId} 
+                  onSuccess={handlePaymentSuccess} 
+                />
               </div>
             )}
           </div>
@@ -1664,36 +1974,98 @@ export default function RootLayout({
 **Prompt:** "Test the complete authentication flow from signup to dashboard access"**
 
 **Test Steps:**
-1. Create a new user account
-2. Verify email confirmation (if enabled)
-3. Login with credentials
-4. Access dashboard
-5. Create an appeal
-6. Test payment flow
+1. Navigate to `/signup` and create a new user account
+2. Check email for confirmation link (if email confirmation enabled)
+3. Navigate to `/login` and sign in with credentials
+4. Verify redirect to `/dashboard`
+5. Check that user data is properly created in Supabase
+6. Verify Stripe customer was created and linked
 
 ### Task 9.2: Test OpenAI Integration
 **Prompt:** "Test OpenAI chat functionality with various PCN scenarios"**
 
 **Test Scenarios:**
-1. Invalid parking ticket appeal
-2. Signage issues
-3. Technical errors
-4. Mitigating circumstances
+1. **Invalid parking ticket appeal**: "I was parked in a valid bay but got a ticket"
+2. **Signage issues**: "The signs were unclear and I couldn't see the restrictions"
+3. **Technical errors**: "The parking meter was broken when I tried to pay"
+4. **Mitigating circumstances**: "I had a medical emergency and had to park illegally"
 
-### Task 9.3: Test Payment Integration
+**Expected Results:**
+- AI should generate professional, persuasive appeal letters
+- Responses should be contextually appropriate
+- No false claims should be encouraged
+
+### Task 9.3: Test OCR and Image Upload
+**Prompt:** "Test photo upload and OCR functionality"**
+
+**Test Steps:**
+1. Upload a clear PCN ticket image
+2. Verify OCR extracts: number plate, PCN number, amount, date, location
+3. Test with blurry or unclear images
+4. Verify image is stored in Supabase storage
+5. Check that extracted data populates the chat interface
+
+### Task 9.4: Test Payment Integration
 **Prompt:** "Test Stripe payment processing with test cards"**
 
 **Test Cards:**
-- Success: 4242 4242 4242 4242
-- Decline: 4000 0000 0000 0002
-- Authentication: 4000 0025 0000 3155
+- **Success**: 4242 4242 4242 4242
+- **Decline**: 4000 0000 0000 0002
+- **Authentication**: 4000 0025 0000 3155
+- **3D Secure**: 4000 0025 0000 3155
+
+**Test Scenarios:**
+1. Free appeal (should not require payment)
+2. Additional appeal (£5 payment)
+3. Vehicle change (£3 payment)
+4. Payment failure handling
+
+### Task 9.5: Test Dashboard Functionality
+**Prompt:** "Test complete dashboard workflow"**
+
+**Test Steps:**
+1. Create multiple appeals with different statuses
+2. Test status updates (successful/unsuccessful)
+3. Verify usage statistics update correctly
+4. Test financial tracking (savings, ticket values)
+5. Test monthly reset functionality
+6. Verify appeals are organized by number plate
+
+### Task 9.6: Test End-to-End User Journey
+**Prompt:** "Test complete user journey from signup to successful appeal"**
+
+**Complete Flow:**
+1. **Signup** → Create account with email/password
+2. **Login** → Access dashboard
+3. **Upload PCN** → Take photo of ticket
+4. **Generate Appeal** → Use AI to create appeal letter
+5. **Save Appeal** → Use free appeal or pay for additional
+6. **Track Progress** → Update status when response received
+7. **View Stats** → Check savings and success rate
+
+**Expected Results:**
+- All steps should work seamlessly
+- Data should persist across sessions
+- Payments should be processed correctly
+- Dashboard should show accurate statistics
 
 ---
 
 ## Phase 10: Production Deployment
 
 ### Task 10.1: Environment Setup
-**Prompt:** "Configure production environment variables and deploy to Vercel"**
+**Prompt:** "Configure production environment variables and deploy to Vercel using Supabase CLI"**
+
+**Commands to run:**
+```bash
+# Link to your Supabase project (if not already linked)
+supabase link --project-ref your-project-ref
+
+# Get your project URL and keys
+supabase status
+
+# Set up environment variables in your deployment platform
+```
 
 **Required Environment Variables:**
 ```env
@@ -1710,11 +2082,17 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 
 **Commands:**
 ```bash
-# Apply migrations
+# Apply migrations to local development
+supabase db reset
+
+# Apply migrations to production
 supabase db push
 
 # Verify tables created
 supabase db diff
+
+# Check migration status
+supabase migration list
 ```
 
 ### Task 10.3: Final Testing
@@ -1754,7 +2132,7 @@ supabase db diff
 - **Pricing Model:**
   - 1 free appeal per month per user
   - £5 per additional appeal after free allowance
-  - First vehicle is free, additional vehicles cost £10 each
+  - First vehicle is free, additional vehicles cost £3 each
 - **OCR Integration:** OpenAI Vision API for automatic PCN ticket scanning
 - **Usage Tracking:** Monthly limits reset automatically
 - **All appeals are saved with proper user association**
