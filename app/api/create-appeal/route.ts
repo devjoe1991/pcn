@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate updates for user statistics
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       total_appeals: userData.total_appeals + 1,
       pending_appeals: userData.pending_appeals + 1,
       total_ticket_value: userData.total_ticket_value + (ticketValue || 0)

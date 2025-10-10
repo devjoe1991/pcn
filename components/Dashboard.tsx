@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '../lib/auth';
@@ -16,10 +16,10 @@ interface Appeal {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usage, setUsage] = useState<any>(null);
+  const [usage, setUsage] = useState<{ hasFreeAppeal: boolean; freeAppealsUsed: number; paidAppealsUsed: number } | null>(null);
   const router = useRouter();
 
   const supabase = createBrowserClient(
@@ -28,20 +28,24 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
+    const checkAuth = () => {
+      getCurrentUser().then((currentUser) => {
+        if (!currentUser) {
+          router.push('/auth');
+          return;
+        }
+        setUser(currentUser);
+        fetchAppeals(currentUser.id);
+        fetchUsage(currentUser.id);
+      }).catch((error) => {
+        console.error('Auth check failed:', error);
         router.push('/auth');
-        return;
-      }
-      setUser(currentUser);
-      fetchAppeals(currentUser.id);
-      fetchUsage(currentUser.id);
+      });
     };
     checkAuth();
-  }, [router]);
+  }, [router, fetchAppeals]);
 
-  const fetchAppeals = async (userId: string) => {
+  const fetchAppeals = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('appeals')
@@ -56,7 +60,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
   const fetchUsage = async (userId: string) => {
     try {

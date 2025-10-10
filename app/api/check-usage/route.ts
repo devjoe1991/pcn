@@ -10,11 +10,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    // Get user data
+    // Use the optimized view for better performance
     const { data: userData, error: userError } = await supabase
-      .from('users')
+      .from('user_profile_summary')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .single();
 
     if (userError || !userData) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const shouldReset = now.getMonth() !== lastReset.getMonth() || 
                        now.getFullYear() !== lastReset.getFullYear();
 
-    let updates: any = {};
+    let updates: Record<string, unknown> = {};
     if (shouldReset) {
       updates = {
         free_appeals_used: 0,
@@ -35,31 +35,31 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Update if needed
+    // Update if needed using the optimized function
     if (Object.keys(updates).length > 0) {
-      await supabase
-        .from('users')
+      const { error: updateError } = await supabase
+        .from('user_profiles')
         .update(updates)
-        .eq('id', userId);
+        .eq('user_id', userId);
       
-      // Update local data
-      Object.assign(userData, updates);
+      if (updateError) {
+        console.error('Update error:', updateError);
+      } else {
+        // Update local data
+        Object.assign(userData, updates);
+      }
     }
 
-    // Calculate if user has free appeal available
-    const hasFreeAppeal = userData.free_appeals_used < 1;
-
     return NextResponse.json({
-      vehicleReg: userData.vehicle_reg,
-      totalAppeals: userData.total_appeals,
-      successfulAppeals: userData.successful_appeals,
-      unsuccessfulAppeals: userData.unsuccessful_appeals,
-      pendingAppeals: userData.pending_appeals,
-      totalTicketValue: userData.total_ticket_value,
-      totalSavings: userData.total_savings,
+      vehicleReg: userData.vehicle_registration,
+      totalAppeals: userData.total_appeals_created,
       freeAppealsUsed: userData.free_appeals_used,
       paidAppealsUsed: userData.paid_appeals_used,
-      hasFreeAppeal
+      hasFreeAppeal: userData.has_free_appeal,
+      stripeCustomerId: userData.stripe_customer_id,
+      firstName: userData.first_name,
+      lastName: userData.last_name,
+      email: userData.email
     });
 
   } catch (error) {

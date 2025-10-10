@@ -1,43 +1,39 @@
 'use client';
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { CustomSignupForm } from './CustomSignupForm';
+import { CustomLoginForm } from './CustomLoginForm';
+
+interface PendingAppeal {
+  content: string;
+  numberPlate: string;
+  ticketValue: number;
+}
 
 export default function JoinKerbi() {
   const [isLogin, setIsLogin] = useState(false);
-  const [pendingAppeal, setPendingAppeal] = useState<any>(null);
+  const [pendingAppeal, setPendingAppeal] = useState<PendingAppeal | null>(null);
   const [message, setMessage] = useState('');
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
   const router = useRouter();
 
-  const handleAuthSuccess = async (session: any) => {
-    if (pendingAppeal) {
+  useEffect(() => {
+    // Check for pending appeal data in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const appealData = urlParams.get('appeal');
+    if (appealData) {
       try {
-        const response = await fetch('/api/save-anonymous-appeal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: session.user.id,
-            appealContent: pendingAppeal.content,
-            numberPlate: pendingAppeal.numberPlate,
-            ticketValue: pendingAppeal.ticketValue
-          }),
-        });
-
-        if (response.ok) {
-          setMessage('Your appeal has been saved to your dashboard!');
-        }
+        setPendingAppeal(JSON.parse(decodeURIComponent(appealData)));
       } catch (error) {
-        console.error('Error saving appeal:', error);
+        console.error('Error parsing appeal data:', error);
       }
     }
-    router.push('/');
+  }, []);
+
+  const handleAuthSuccess = () => {
+    if (pendingAppeal) {
+      setMessage('Your appeal has been saved to your dashboard!');
+    }
+    router.push('/dashboard');
   };
 
   return (
@@ -110,7 +106,7 @@ export default function JoinKerbi() {
                   </div>
                   <div>
                     <h4 className="text-lg font-semibold text-white mb-2">Quick & Easy</h4>
-                    <p className="text-gray-300">Upload your PCN or describe your situation - we'll handle the rest. Get your appeal letter in minutes.</p>
+                    <p className="text-gray-300">Upload your PCN or describe your situation - we&apos;ll handle the rest. Get your appeal letter in minutes.</p>
                   </div>
                 </div>
 
@@ -155,72 +151,17 @@ export default function JoinKerbi() {
                 </div>
               )}
 
-              <Auth
-                supabaseClient={supabase}
-                view={isLogin ? "sign_in" : "sign_up"}
-                appearance={{
-                  theme: ThemeSupa,
-                  variables: {
-                    default: {
-                      colors: {
-                        brand: '#3b82f6',
-                        brandAccent: '#2563eb',
-                        brandButtonText: 'white',
-                        defaultButtonBackground: '#27272a',
-                        defaultButtonBackgroundHover: '#3f3f46',
-                        defaultButtonBorder: '#52525b',
-                        defaultButtonText: 'white',
-                        dividerBackground: '#52525b',
-                        inputBackground: '#27272a',
-                        inputBorder: '#52525b',
-                        inputBorderHover: '#71717a',
-                        inputBorderFocus: '#3b82f6',
-                        inputText: 'white',
-                        inputLabelText: '#a1a1aa',
-                        inputPlaceholder: '#71717a',
-                        messageText: '#a1a1aa',
-                        messageTextDanger: '#ef4444',
-                        anchorTextColor: '#3b82f6',
-                        anchorTextHoverColor: '#2563eb',
-                      },
-                      space: {
-                        spaceSmall: '4px',
-                        spaceMedium: '8px',
-                        spaceLarge: '16px',
-                        labelBottomMargin: '8px',
-                        anchorBottomMargin: '4px',
-                        emailInputSpacing: '4px',
-                        socialAuthSpacing: '4px',
-                        buttonPadding: '10px 15px',
-                        inputPadding: '10px 15px',
-                      },
-                      fontSizes: {
-                        baseBodySize: '13px',
-                        baseInputSize: '14px',
-                        baseLabelSize: '14px',
-                        baseButtonSize: '14px',
-                      },
-                      fonts: {
-                        bodyFontFamily: `ui-sans-serif, system-ui, -apple-system, sans-serif`,
-                        buttonFontFamily: `ui-sans-serif, system-ui, -apple-system, sans-serif`,
-                        inputFontFamily: `ui-sans-serif, system-ui, -apple-system, sans-serif`,
-                        labelFontFamily: `ui-sans-serif, system-ui, -apple-system, sans-serif`,
-                      },
-                      borderWidths: {
-                        buttonBorderWidth: '1px',
-                        inputBorderWidth: '1px',
-                      },
-                      radii: {
-                        borderRadiusButton: '6px',
-                        buttonBorderRadius: '6px',
-                        inputBorderRadius: '6px',
-                      },
-                    },
-                  },
-                }}
-                providers={[]}
-                redirectTo={`${window.location.origin}/`}
-              />
+              {isLogin ? (
+                <CustomLoginForm 
+                  pendingAppeal={pendingAppeal}
+                  onSuccess={handleAuthSuccess}
+                />
+              ) : (
+                <CustomSignupForm 
+                  pendingAppeal={pendingAppeal}
+                  onSuccess={handleAuthSuccess}
+                />
+              )}
 
               {message && (
                 <div className={`mt-4 p-3 rounded-lg text-sm ${

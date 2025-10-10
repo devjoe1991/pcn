@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, isAnonymous = false, userId = null, analysisStage = 'initial' } = await request.json();
+    const { messages, isAnonymous = false, userId = null } = await request.json();
     
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array is required' }, { status: 400 });
@@ -15,15 +14,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Last message must be from user' }, { status: 400 });
     }
 
-    const userInput = lastMessage.content.toLowerCase();
     let reply = "";
 
     // Check if this is a PCN-related query
     const pcnKeywords = ['pcn', 'penalty charge notice', 'parking ticket', 'fine', 'appeal', 'contravention', 'council', 'ticket', 'parked', 'parking'];
-    const isPcnQuery = pcnKeywords.some(keyword => userInput.includes(keyword));
+    const isPcnQuery = pcnKeywords.some(keyword => lastMessage.content.toLowerCase().includes(keyword));
 
     // Handle the analysis flow
-    if (isPcnQuery || userInput.length > 30) {
+    if (isPcnQuery || lastMessage.content.length > 30) {
       if (isAnonymous) {
         // Show analysis results first to build value
         reply = generateComplianceAnalysis(lastMessage.content);
@@ -37,31 +35,12 @@ export async function POST(request: NextRequest) {
       } else {
         // For authenticated users, check usage and proceed
         if (userId) {
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('free_appeals_used, last_free_appeal_reset')
-            .eq('id', userId)
-            .single();
-
-          if (userData) {
-            const now = new Date();
-            const lastReset = new Date(userData.last_free_appeal_reset);
-            const shouldReset = now.getMonth() !== lastReset.getMonth() || 
-                               now.getFullYear() !== lastReset.getFullYear();
-
-            let freeAppealsUsed = userData.free_appeals_used;
-            if (shouldReset) {
-              freeAppealsUsed = 0;
-              await supabase
-                .from('users')
-                .update({ 
-                  free_appeals_used: 0,
-                  last_free_appeal_reset: now.toISOString()
-                })
-                .eq('id', userId);
-            }
-
-            if (freeAppealsUsed >= 1) {
+          try {
+            // Call the check-usage API endpoint
+            const usageResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/check-usage?userId=${userId}`);
+            const usageData = await usageResponse.json();
+            
+            if (!usageData.hasFreeAppeal) {
               reply = generateComplianceAnalysis(lastMessage.content) + "\n\n" + generatePaywallMessage();
               return NextResponse.json({ 
                 reply,
@@ -70,15 +49,18 @@ export async function POST(request: NextRequest) {
                 showAnalysis: true
               });
             }
+          } catch (error) {
+            console.error('Error checking usage stats:', error);
+            // Continue with free appeal if error occurs
           }
         }
         
         // Generate full appeal for authenticated users with free appeals
         reply = generateComplianceAnalysis(lastMessage.content) + "\n\n" + generateFullAppeal(lastMessage.content);
       }
-    } else if (userInput.includes('hello') || userInput.includes('hi')) {
+    } else if (lastMessage.content.toLowerCase().includes('hello') || lastMessage.content.toLowerCase().includes('hi')) {
       reply = "🔍 **Welcome to Kerbi - Your AI Compliance Expert!**\n\nI specialize in finding **legal loopholes and compliance issues** in PCN cases that can get your ticket cancelled.\n\n**Upload your ticket or describe your situation** - I'll analyze it for:\n✅ **Signage compliance issues**\n✅ **Procedural errors**\n✅ **Legal technicalities**\n✅ **Mitigating circumstances**\n\n*No account needed for analysis - I'll show you what I found first!*";
-    } else if (userInput.includes('help')) {
+    } else if (lastMessage.content.toLowerCase().includes('help')) {
       reply = "🔍 **I'm your AI compliance expert!**\n\n**What I do:**\n- Find legal loopholes in PCN cases\n- Identify signage compliance issues\n- Spot procedural errors by councils\n- Create winning appeal arguments\n\n**Just tell me about your parking situation** and I'll analyze it for compliance issues!\n\n*I'll show you what I found before asking for anything!*";
     } else {
       reply = `I understand you're asking about "${lastMessage.content}". I'm specialized in finding compliance issues in PCN cases! 🔍\n\n**Tell me about your parking situation** and I'll analyze it for:\n- Signage compliance problems\n- Procedural errors\n- Legal technicalities\n- Winning appeal arguments\n\n**What happened with your parking?**`;
@@ -86,9 +68,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       reply,
-      isPcnAppeal: isPcnQuery || userInput.length > 30,
+      isPcnAppeal: isPcnQuery || lastMessage.content.length > 30,
       requiresAuth: false,
-      showAnalysis: isPcnQuery || userInput.length > 30
+      showAnalysis: isPcnQuery || lastMessage.content.length > 30
     });
   } catch (error) {
     console.error('Chat API error:', error);
@@ -224,7 +206,7 @@ function generateComplianceIssues(userInput: string): string {
   return issues.join('\n');
 }
 
-function generateComplianceChecklist(userInput: string): string {
+function generateComplianceChecklist(_userInput: string): string {
   return `✅ Signage visibility and clarity
 ✅ Proper notice periods
 ✅ Payment system functionality  
@@ -316,16 +298,3 @@ function generateLegalArguments(userInput: string): string {
 - Verify all legal requirements were met`;
 }
 
-function generateMitigatingCircumstances(userInput: string): string {
-  if (userInput.includes('emergency') || userInput.includes('medical')) {
-    return "- Medical emergency requiring immediate attention";
-  } else if (userInput.includes('broken') || userInput.includes('breakdown')) {
-    return "- Vehicle breakdown requiring roadside assistance";
-  } else if (userInput.includes('loading') || userInput.includes('unloading')) {
-    return "- Legitimate loading/unloading activity";
-  } else if (userInput.includes('blue badge') || userInput.includes('disabled')) {
-    return "- Blue badge holder with legitimate parking rights";
-  } else {
-    return "- [Specific circumstances to be detailed]";
-  }
-}

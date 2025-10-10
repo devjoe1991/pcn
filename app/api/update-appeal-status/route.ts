@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate updates based on status change
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     
     if (status === 'successful') {
       updates.successful_appeals = userData.successful_appeals + 1;

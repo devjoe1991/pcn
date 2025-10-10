@@ -5,8 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 
+interface PendingAppeal {
+  content: string;
+  numberPlate: string;
+  ticketValue: number;
+}
+
 export default function AuthPage() {
-  const [pendingAppeal, setPendingAppeal] = useState<any>(null);
+  const [pendingAppeal, setPendingAppeal] = useState<PendingAppeal | null>(null);
   const [message, setMessage] = useState('');
 
   const supabase = createBrowserClient(
@@ -24,6 +30,48 @@ export default function AuthPage() {
         setPendingAppeal(JSON.parse(decodeURIComponent(appealData)));
       } catch (error) {
         console.error('Error parsing appeal data:', error);
+      }
+    }
+
+    // Check for confirmation messages
+    const message = searchParams.get('message');
+    const error = searchParams.get('error');
+
+    if (message) {
+      switch (message) {
+        case 'email-confirmed':
+          setMessage('🎉 Email confirmed successfully! You can now sign in to your account.');
+          break;
+        case 'password-reset':
+          setMessage('🔑 Password reset link confirmed. You can now set a new password.');
+          break;
+        case 'email-changed':
+          setMessage('📧 Email change confirmed. Your new email address is now active.');
+          break;
+        case 'confirmed':
+          setMessage('✅ Confirmation successful! You can now proceed.');
+          break;
+        default:
+          setMessage('✅ ' + message);
+      }
+    }
+
+    if (error) {
+      switch (error) {
+        case 'missing-parameters':
+          setMessage('❌ Missing confirmation parameters. Please try again.');
+          break;
+        case 'invalid-token':
+          setMessage('❌ Invalid or expired confirmation link. Please request a new one.');
+          break;
+        case 'user-not-found':
+          setMessage('❌ User not found. Please try signing up again.');
+          break;
+        case 'confirmation-failed':
+          setMessage('❌ Confirmation failed. Please try again.');
+          break;
+        default:
+          setMessage('❌ ' + error);
       }
     }
 
@@ -50,7 +98,7 @@ export default function AuthPage() {
             console.error('Error saving appeal:', error);
           }
         }
-        router.push('/');
+        router.push('/dashboard');
       }
     });
     return () => {
@@ -139,7 +187,7 @@ export default function AuthPage() {
               },
             }}
             providers={[]}
-            redirectTo={`${window.location.origin}/`}
+            redirectTo={`${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`}
           />
 
           {message && (

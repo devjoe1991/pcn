@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     // Parse the JSON response from OpenAI
     let extractedData;
-    let fullText = analysisText;
+    const fullText = analysisText;
     
     try {
       // Try to extract JSON from the response

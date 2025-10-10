@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 
 interface ImageUploadProps {
-  onImageProcessed: (data: any) => void;
+  onImageProcessed: (data: { content: string; numberPlate: string; ticketValue: number }) => void;
   disabled?: boolean;
 }
 

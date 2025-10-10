@@ -2,10 +2,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { MovingBorder } from "./ui/moving-border";
-import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '../lib/auth';
-import UsageStats from './UsageStats';
+import { UsageStats } from './UsageStats';
 import ImageUpload from './ImageUpload';
 import PaymentForm from './PaymentForm';
 
@@ -14,35 +13,33 @@ export default function Hero() {
     { role: "assistant", content: "🔍 **Welcome to Kerbi - Your AI PCN Compliance Expert!**\n\nI specialize in finding **legal loopholes and compliance issues** in PCN cases that can get your ticket cancelled.\n\n**Upload your ticket or describe your situation** - I'll analyze it for:\n✅ **Signage compliance issues**\n✅ **Procedural errors**\n✅ **Legal technicalities**\n✅ **Mitigating circumstances**\n\n*No account needed for analysis - I'll show you what I found first!*" }
   ]);
   const [input, setInput] = useState("");
-  const [user, setUser] = useState<any>(null);
-  const [usage, setUsage] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [usage, setUsage] = useState<{ hasFreeAppeal: boolean; freeAppealsUsed: number; paidAppealsUsed: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [detectedVehicle, setDetectedVehicle] = useState<string | null>(null);
   const [needsVehiclePayment, setNeedsVehiclePayment] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [currentAppealId, setCurrentAppealId] = useState<string | null>(null);
   const [paymentType, setPaymentType] = useState<'additional_appeal' | 'vehicle_addition'>('additional_appeal');
-  const [hasGeneratedAppeal, setHasGeneratedAppeal] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [analysisData, setAnalysisData] = useState<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const currentUser = await getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        fetchUsage(currentUser.id);
-      }
-      setLoading(false);
+    const checkAuth = () => {
+      getCurrentUser().then((currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+          fetchUsage(currentUser.id);
+        }
+        setLoading(false);
+      }).catch((error) => {
+        console.error('Auth check failed:', error);
+        setLoading(false);
+      });
     };
     checkAuth();
   }, []);
@@ -100,7 +97,7 @@ export default function Hero() {
     }
   };
 
-  const handleImageProcessed = async (data: any) => {
+  const handleImageProcessed = async (data: { content: string; numberPlate: string; ticketValue: number }) => {
     // For anonymous users, show auth prompt immediately
     if (!user) {
       setShowAuthPrompt(true);
@@ -239,7 +236,7 @@ ${fullText}`;
   const handleSignOut = async () => {
     const { signOut } = await import('../lib/auth');
     await signOut();
-    router.push('/auth');
+    router.push('/');
   };
 
   useEffect(() => {
@@ -338,7 +335,7 @@ ${fullText}`;
         {/* Hero / Landing Headline */}
         <div className="text-center max-w-4xl mb-8 sm:mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
-            Find the Loophole!
+            Meet Kerbi!
           </h1>
           <p className="text-xl sm:text-2xl font-bold text-white mb-8 sm:mb-12 max-w-3xl mx-auto leading-tight">
             AI-powered compliance expert finds legal technicalities to cancel your PCN
@@ -420,11 +417,11 @@ ${fullText}`;
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-yellow-400 mb-2">💰 Get Your Winning Appeal Letter</h3>
                   <p className="text-gray-300 mb-4">
-                    I've found strong compliance issues - now let me create your professional appeal letter!
+                    I&apos;ve found strong compliance issues - now let me create your professional appeal letter!
                   </p>
                   
                   <div className="bg-zinc-800/50 rounded-lg p-4 mb-4 text-left">
-                    <h4 className="font-semibold text-white mb-2">🎯 What you'll get:</h4>
+                    <h4 className="font-semibold text-white mb-2">🎯 What you&apos;ll get:</h4>
                     <ul className="text-sm text-gray-300 space-y-1">
                       <li>✅ Professional appeal letter tailored to your compliance issues</li>
                       <li>✅ Legal arguments based on the technicalities I found</li>

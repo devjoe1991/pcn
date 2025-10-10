@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { UserProfileService } from './user-profile';
 
 export const signUp = async (email: string, password: string, fullName: string) => {
   const { data, error } = await supabase.auth.signUp({
@@ -26,11 +27,8 @@ export const signUp = async (email: string, password: string, fullName: string) 
 
       if (response.ok) {
         const { customerId } = await response.json();
-        // Update user record with Stripe customer ID
-        await supabase
-          .from('users')
-          .update({ stripe_customer_id: customerId })
-          .eq('id', data.user.id);
+        // Update user profile with Stripe customer ID
+        await UserProfileService.updateField(data.user.id, 'stripe_customer_id', customerId);
       }
     } catch (stripeError) {
       console.error('Failed to create Stripe customer:', stripeError);

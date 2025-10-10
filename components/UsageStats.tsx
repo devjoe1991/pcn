@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
 
 interface UsageStatsProps {
   userId: string;
@@ -19,7 +18,7 @@ interface UserStats {
   hasFreeAppeal: boolean;
 }
 
-export default function UsageStats({ userId }: UsageStatsProps) {
+export function UsageStats({ userId }: UsageStatsProps) {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
 

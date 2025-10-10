@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
-  const { userId, paymentType, appealId } = paymentIntent.metadata;
+  const { userId, paymentType } = paymentIntent.metadata;
 
   if (!userId) {
     console.error('No userId in payment metadata');
@@ -94,4 +94,5 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
     last_payment_error: paymentIntent.last_payment_error
   });
 }
+
 
